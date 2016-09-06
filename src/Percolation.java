@@ -31,16 +31,27 @@ public class Percolation {
     private int n;
 
     /*
-     * An N*N percolation grid + 2 virtual connector sites. It will contain
+     * A N*N percolation grid + 2 virtual connector sites. It will contain
      * (N*N)+2 elements. The grid elements can be references as (1,1) to (N,N).
      * 
-     * Element (i,j) refers to ((i-1)*N+(j)) array element
+     * Element (i,j) refers to ((i-1)*N+j) array element.
      *
      * If any cell (1,*) is opened, it will get connected to top virtual
      * connector at id[0]. If any cell (N,*) is opened, it will get connected to
      * the bottom virtual connector at id[N*N+1].
      */
     private WeightedQuickUnionUF percolationGrid;
+    
+    /*
+     * A N*N isFull grid + top virtual connector site. It will contain
+     * (N*N)+1 elements. The grid elements can be referenced as (1,1) to (N,N).
+     * 
+     * Element (i,j) refers to ((i-1)*N+j) array element.
+     * 
+     * If any cell (1,*) is opened, it will get connected to the top virtual 
+     * connector at id[0]. 
+     */
+    private WeightedQuickUnionUF fullGrid;
 
     /*
      * Initialize the percolation array.
@@ -52,6 +63,7 @@ public class Percolation {
         this.n = n;
         this.bottomConnector = n * n + 1;
         openGrid = new boolean[n * n + 2];
+        fullGrid = new WeightedQuickUnionUF(n * n + 1);
         percolationGrid = new WeightedQuickUnionUF(n * n + 2);
     }
 
@@ -66,15 +78,17 @@ public class Percolation {
         int id = locate(i, j);
         openGrid[id] = true;
 
-        if (i == 1)
+        if (i == 1) {
+            fullGrid.union(0, id);
             percolationGrid.union(0, id);
+        }
         if (i == n)
             percolationGrid.union(bottomConnector, id);
 
-        connectToSite(id, i - 1, j); // connect with left neighbour
-        connectToSite(id, i + 1, j); // connect with right neighbour
-        connectToSite(id, i, j - 1); // connect with above neighbour
-        connectToSite(id, i, j + 1); // connect with below neighbour
+        connectToSite(id, i - 1, j); // connect with above neighbour
+        connectToSite(id, i + 1, j); // connect with below neighbour
+        connectToSite(id, i, j - 1); // connect with left  neighbour
+        connectToSite(id, i, j + 1); // connect with right neighbour
     }
 
     /*
@@ -92,7 +106,7 @@ public class Percolation {
      */
     public boolean isFull(int i, int j) {
         int id = locate(i, j);
-        return percolationGrid.connected(0, id);
+        return fullGrid.connected(0, id);
     }
 
     /*
@@ -130,7 +144,8 @@ public class Percolation {
     private void connectToSite(int id, int i, int j) {
         try {
             int newId = locate(i, j);
-            if (openGrid[newId] && !percolationGrid.connected(id, newId)) {
+            if (openGrid[newId]) {
+                fullGrid.union(id, newId);
                 percolationGrid.union(id, newId);
             }
         } catch (IndexOutOfBoundsException e) {
@@ -139,19 +154,18 @@ public class Percolation {
     }
 
     public static void main(String[] args) {
-        System.setIn(ClassLoader.getSystemResourceAsStream("input2.txt"));
+        System.setIn(ClassLoader.getSystemResourceAsStream("input6.txt"));
 
         int n = StdIn.readInt();
         StdOut.println("N: " + n);
 
         Percolation perc = new Percolation(n);
-        while (!perc.percolates()) {
+        while (!StdIn.isEmpty()) {
             int p = StdIn.readInt();
             int q = StdIn.readInt();
             perc.open(p, q);
-
-            StdOut.printf("(%d,%d) : Has system percolated? %s%n", p, q, 
-                    (perc.percolates() ? "Yes" : "No"));
         }
+        
+        StdOut.println("isFull(5, 1) ? " + perc.isFull(5,  1));
     }
 }
